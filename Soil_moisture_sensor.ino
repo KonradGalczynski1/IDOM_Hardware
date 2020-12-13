@@ -1,12 +1,12 @@
 /***** Variables to customize *****/
 // Name of your network
-String ssid = "";
+const char* ssid = "MASZT_2.4G";
 // Password of your network
-String password = "";
+const char* password = "Kopytko1954!";
 // Raspberry server address here
-String ServerName = "";
+const String ServerName = "192.168.0.100:8001";
 // Name of your sensor
-String Name = "";
+String Name = "wilgotnosc2";
 
 
 #include <ESP8266WiFi.h>
@@ -14,9 +14,15 @@ String Name = "";
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
+#include <FS.h>
 
-int GPIO = A0;
+
+String temp = "";
+unsigned long Actual_time = 0;
+unsigned long Last_time = 0;
+const int GPIO = A0;
 int Freq = 1800;
+int Flag = 0;
 ESP8266WebServer server(8000);
 
 int WiFiConnection(){
@@ -36,18 +42,18 @@ int WiFiConnection(){
             loop_connect ++;
         }
      
-     if (WiFi.status() != WL_CONNECTED){
-       return 0;
-     }
-     else{
-       return 1;
-     }
-     
-  }
-  else{
-    return 1;
-  }
+        if (WiFi.status() != WL_CONNECTED){
+          return 0;
+        }
+        else{
+            return 1;
+        }
   
+    }
+    else{
+        return 1;
+    }
+ 
 }
 
 
@@ -94,7 +100,8 @@ int SendIP(){
 void setup()
 {
     Serial.begin(115200);
-    WiFiConnection();
+    SPIFFS.begin();
+    File file = SPIFFS.open("/data.txt", "r");
     
     int loop_connect = 0;
     while(WiFiConnection() < 1  && loop_connect < 6){
@@ -102,10 +109,37 @@ void setup()
             delay(Freq * 1000);
             loop_connect = 0;
         }
+        
+        WiFiConnection();
         delay(500);
         loop_connect ++;
     }
     SendIP();
+
+    if (!file) {
+      file = SPIFFS.open("/data.txt", "w");
+      file.print(Name);
+      file.print("0x0x0");
+      file.print(Freq);
+      file.close();
+    }
+    
+    else {
+      Name = "";
+      Freq = 0;
+      temp = "";
+      while (file.available()) {
+        if (Name.substring(Name.length() - 5) == "0x0x0"){
+          temp += char(file.read());
+        }
+        else{
+          Name += char(file.read());
+        }
+      }
+      file.close();
+      Freq = temp.toInt();
+      Name = Name.substring(0, Name.length() - 5);
+    }
       
     server.on("/receive", handleReceive);
     server.onNotFound(handleNotFound);
@@ -116,23 +150,36 @@ void handleNotFound() {
 }
 
 void handleReceive() { 
-  Name = server.arg("name");
-  Freq = (server.arg("frequency").toInt());
-  server.send(200);
+    Name = server.arg("name");
+    Freq = (server.arg("frequency").toInt());
+    server.send(200);
+    
+    File file = SPIFFS.open("/data.txt", "w");
+    file.print(Name);
+    file.print("0x0x0");
+    file.print(Freq);
+    file.close();
 }
 
 void loop()
 { 
-  server.handleClient();
-
-  if (WiFiConnection() > 0) {
-    int Moisture = analogRead(GPIO);
-    Moisture = map(Moisture, 0, 1023, 0, 100);
-    String dataSend = String(Moisture + " with more");
-    postData(dataSend);
-  }
-  else {
-    WiFiConnection();
-  }
-  delay(Freq * 1000);
+    server.handleClient();
+  
+    if (WiFiConnection() > 0){
+        if(Flag == 0) {
+            int Moisture = analogRead(GPIO);
+            Moisture = map(Moisture, 279, 560, 100, 0);
+            String dataSend = String(Moisture);
+            postData(dataSend);
+            Flag = 1;
+            Last_time = millis();
+        }
+        Actual_time = millis();
+        if(Actual_time - Last_time >= 10000UL) {
+            ESP.deepSleep(Freq * 1000000);
+        }
+    }
+    else {
+        WiFiConnection();
+    }
 }

@@ -6,25 +6,29 @@
 #include <Arduino.h>
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
+#include <FS.h>
 
 
 /***** Variables to customize *****/
 // Name of your network
-const char* ssid = "";
+const char* ssid = "MASZT_2.4G";
 // Password of your network
-const char* password = "";
+const char* password = "Kopytko1954!";
 // Raspberry server address here
-String ServerName = "";
+const String ServerName = "192.168.0.100:8001";
 // Name of your sensor
-String Name = "";
+String Name = "Humidity_test";
+// Your humidity sensor DHT11 or DHT22
+#define Sensor DHT22
 // Your GPIO pin number
-const int GPIO = ;
+const int GPIO = 5;
 
 
+String temp = "";
 unsigned long Actual_time = 0;
 unsigned long Last_time = 0;
-int Freq = 30;
-#define Sensor DHT22
+int Freq = 1800;
+int Flag = 0;
 DHT dht(GPIO, Sensor);
 ESP8266WebServer server(8000);
 void handleRoot();
@@ -72,7 +76,7 @@ void postData(String Sensor_data){
     root["sensor_data"] = Sensor_data;
     String Data;
     root.printTo(Data);
-    Http.begin("http://" + ServerName + "/sensors_data/add");
+    Http.begin("http://" + ServerName + "/sensors_data/add");    
     Http.addHeader("Content-Type", "application/json");
     int HttpResponse = Http.POST(Data);
     
@@ -111,12 +115,20 @@ void handleReceive() {
     Name = String(server.arg("name"));
     Freq = (server.arg("frequency").toInt());
     server.send(200);
+    
+    File file = SPIFFS.open("/data.txt", "w");
+    file.print(Name);
+    file.print("0x0x0");
+    file.print(Freq);
+    file.close();
 }
 
 
 void setup() {
     Serial.begin(115200);
+    SPIFFS.begin();
     dht.begin();
+    File file = SPIFFS.open("/data.txt", "r");
 
     int loop_connect = 0;
     while(WiFiConnection() < 1  && loop_connect < 6){
@@ -131,6 +143,31 @@ void setup() {
     }
     SendIP();
 
+    if (!file) {
+      file = SPIFFS.open("/data.txt", "w");
+      file.print(Name);
+      file.print("0x0x0");
+      file.print(Freq);
+      file.close();
+    }
+    
+    else {
+      Name = "";
+      Freq = 0;
+      temp = "";
+      while (file.available()) {
+        if (Name.substring(Name.length() - 5) == "0x0x0"){
+          temp += char(file.read());
+        }
+        else{
+          Name += char(file.read());
+        }
+      }
+      file.close();
+      Freq = temp.toInt();
+      Name = Name.substring(0, Name.length() - 5);
+    }
+
     server.on("/receive", handleReceive);
     server.onNotFound(handleNotFound);
     server.begin();
@@ -141,12 +178,16 @@ void loop(){
     server.handleClient();
     
     if (WiFiConnection() > 0) {
-        Actual_time = millis();
-        if(Actual_time - Last_time >= Freq * 1000UL) {
-            Last_time = Actual_time;
+        if(Flag == 0) {
             float Humidity = dht.readHumidity();
             String dataSend = String(Humidity, 2);
             postData(dataSend);
+            Flag = 1;
+            Last_time = millis();
+        }
+        Actual_time = millis();
+        if(Actual_time - Last_time >= 10000UL) {
+            ESP.deepSleep(Freq * 1000000);
         }
     }
     else {
