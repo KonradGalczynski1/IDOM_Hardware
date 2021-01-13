@@ -7,28 +7,26 @@ const char* password = "";
 const String ServerName = "";
 // Name of your sensor
 String Name = "";
-// Your GPIO pin number
-const int GPIO = ;
 
 
+#include <FS.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>SS
+#include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <Adafruit_Sensor.h>
-#include <DHT.h>
-#include <FS.h>
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
 
 
-#define Sensor DHT22
+Adafruit_BMP280 bmp;
 String temp = "";
 unsigned long Actual_time = 0;
 unsigned long Last_time = 0;
 int Freq = 1800;
 const int Battery_GPIO = A0;
 int Flag = 0;
-DHT dht(GPIO, Sensor);
 ESP8266WebServer server(8000);
 void handleRoot();
 const float Batter_percentage[12][2] = {
@@ -87,7 +85,7 @@ void postData(String Sensor_data){
     root["sensor_data"] = Sensor_data;
     String Data;
     root.printTo(Data);
-    Http.begin("http://" + ServerName + "/sensors_data/add");    
+    Http.begin("http://" + ServerName + "/sensors_data/add");
     Http.addHeader("Content-Type", "application/json");
     int HttpResponse = Http.POST(Data);
     
@@ -141,7 +139,7 @@ void handleReceive() {
     Name = String(server.arg("name"));
     Freq = (server.arg("frequency").toInt());
     server.send(200);
-    
+
     File file = SPIFFS.open("/data.txt", "w");
     file.print(Name);
     file.print("0x0x0");
@@ -152,13 +150,13 @@ void handleReceive() {
 
 void setup() {
     SPIFFS.begin();
-    dht.begin();
+    bmp.begin(0x76);
     File file = SPIFFS.open("/data.txt", "r");
-
+    
     int loop_connect = 0;
     while(WiFiConnection() < 1  && loop_connect < 6){
         if(loop_connect > 5){
-            delay(Freq * 1000);
+            delay(1000);
             loop_connect = 0;
         }
         
@@ -214,8 +212,8 @@ void loop(){
             }
             SendBattery_level(perc);
             
-            float Humidity = dht.readHumidity();
-            String dataSend = String(Humidity, 2);
+            float air_pressure = (bmp.readPressure() / 100.0F);
+            String dataSend = String(air_pressure);
             postData(dataSend);
             Flag = 1;
             Last_time = millis();

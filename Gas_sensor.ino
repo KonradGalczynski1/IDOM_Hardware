@@ -7,27 +7,26 @@ const char* password = "";
 String ServerName = "";
 // Name of your sensor
 String Name = "";
-// Your GPIO pin number connected to green led
-const int Green = ;
-// Your GPIO pin number connected to red led
-const int Red = ;
-// Your GPIO pin number connected to button
-const int Button = ;
+// Your GPIO pin connected to pin A of CD4052
+const int ADC_divider_1 = ;
+// Your GPIO pin connected to pin B of CD4052
+const int ADC_divider_2 = ;
+// Your GPIO pin connected to pin C of CD4052
+const int ADC_divider_3 = ;
 
-
-#include <FS.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
+#include <FS.h>
 
 unsigned long Actual_time = 0;
-unsigned long Count_4_seconds = 0;
 unsigned long Last_time = 0;
 int GPIO = A0;
 int Flag = 0;
 int Value = 0;
+int Check = 0;
 ESP8266WebServer server(8000);
 void handleRoot();
 
@@ -61,14 +60,13 @@ int WiFiConnection(){
 }
 
 
-void postData(String Sensor_data){
+void postData(){
 
     HTTPClient Http;
     StaticJsonBuffer<100> postData_Buffer;
     JsonObject& root = postData_Buffer.createObject();
     
     root["sensor"] = Name;
-    root["sensor_data"] = Sensor_data;
     String Data;
     root.printTo(Data);
     Http.begin("http://" + ServerName + "/sensors_data/add");
@@ -94,7 +92,7 @@ int SendIP(){
     int httpResponseCode = Http.POST(Data);
     
     Http.end();
-    IP_Buffer.clear();
+    IP_Buffer.clear();      
 }
 
 void handleNotFound() { 
@@ -103,7 +101,7 @@ void handleNotFound() {
 void handleReceive() { 
     Name = String(server.arg("name"));
     server.send(200);
-
+    
     File file = SPIFFS.open("/data.txt", "w");
     file.print(Name);
     file.close();
@@ -111,44 +109,46 @@ void handleReceive() {
 
 
 void setup() {
-  SPIFFS.begin();
-  File file = SPIFFS.open("/data.txt", "r");
+    SPIFFS.begin();
+    File file = SPIFFS.open("/data.txt", "r");
 
-  pinMode(Green, OUTPUT);
-  pinMode(Red, OUTPUT);
-  pinMode(Button, INPUT_PULLUP);
-  digitalWrite(Green, LOW);
-  digitalWrite(Red, LOW);
+    pinMode(ADC_divider_1, OUTPUT);
+    pinMode(ADC_divider_2, OUTPUT);     
+    pinMode(ADC_divider_3, OUTPUT);  
 
-  int loop_connect = 0;
-  while(WiFiConnection() < 1  && loop_connect < 6){
-      if(loop_connect > 5){
-          delay(1000);
-          loop_connect = 0;
-      }
-      WiFiConnection();
-      delay(500);
-      loop_connect ++;
-  }
-  SendIP();
+    digitalWrite(ADC_divider_1, 0);
+    digitalWrite(ADC_divider_2, 0);
+    digitalWrite(ADC_divider_3, 0);
 
-  if (!file) {
-    file = SPIFFS.open("/data.txt", "w");
-    file.print(Name);
-    file.close();
-  }
-    
-  else {
-    Name = "";
-    while (file.available()) {
-      Name += char(file.read());
+    int loop_connect = 0;
+    while(WiFiConnection() < 1  && loop_connect < 6){
+        if(loop_connect > 5){
+            delay(1000);
+            loop_connect = 0;
+        }
+        WiFiConnection();
+        delay(500);
+        loop_connect ++;
     }
-    file.close();
-  }
+    SendIP();
 
-  server.on("/receive", handleReceive);
-  server.onNotFound(handleNotFound);
-  server.begin();
+    if (!file) {
+      File file = SPIFFS.open("/data.txt", "w");
+      file.print(Name);
+      file.close();
+    }
+      
+    else {
+      Name = "";
+      while (file.available()) {
+        Name += char(file.read());
+      }
+      file.close();
+    }
+
+    server.on("/receive", handleReceive);
+    server.onNotFound(handleNotFound);
+    server.begin();
 }
 
 
@@ -156,35 +156,35 @@ void loop() {
   server.handleClient();
   
   if (WiFiConnection() > 0) {
-    if (digitalRead(Button) == LOW && Flag == 1) {
-      Flag = 0;
-      digitalWrite(Green, HIGH);
-    }
-    float Sum = 0;
-    int Check_sum = 0;
-    if (digitalRead(Button) == LOW && Flag == 0) {
-      Flag = 1;
-      Actual_time = millis();
-      Count_4_seconds = millis();
-      while(Actual_time - Count_4_seconds <= 4000UL) {
-        Actual_time = millis();
-        if(Actual_time - Last_time >= 200UL) {
-          Last_time = Actual_time;
-          Value = analogRead(GPIO);
-          Sum += Value;
-          Check_sum++;
+    Actual_time = millis();
+    if(Actual_time - Last_time >= 5000UL) {
+      Last_time = Actual_time;
+      Value = analogRead(GPIO);
+      if(Value > 300 && Flag == 0){
+        for(int i = 0; i < 10;){
+          delay(251);
+          Actual_time = millis();
+          if(Actual_time - Last_time >= 500UL) {
+            i++;
+            Last_time = Actual_time;
+            Value = analogRead(GPIO);
+            if(Value > 300){
+              Check++;
+            }
+          }
         }
-        yield();
+        if(Check >= 9){
+          postData();
+          Flag = 1;
+        }
+        Check = 0;
       }
-      digitalWrite(Red, HIGH);
-      Sum = Sum / Check_sum;
-      postData(String(Sum));
+      if(Value < 250 && Flag == 1){
+        Flag = 0;
+      }
     }
   }
   else {
     WiFiConnection();
   }
-  delay(2000);
-  digitalWrite(13, LOW);
-  digitalWrite(15, LOW);
 }

@@ -1,14 +1,14 @@
 /***** Variables to customize *****/
 // Name of your network
-const char* ssid = "MASZT_2.4G";
+const char* ssid = "";
 // Password of your network
-const char* password = "Kopytko1954!";
+const char* password = "";
 // Raspberry server address here
-const String ServerName = "192.168.0.100:8001";
+const String ServerName = "";
 // Name of your sensor
-String Name = "temperatura_pokoj";
+String Name = "";
 // Your GPIO pin number
-const int GPIO = 5;
+const int GPIO = ;
 
 
 #include <ESP8266WiFi.h>
@@ -25,12 +25,29 @@ String temp = "";
 unsigned long Actual_time = 0;
 unsigned long Last_time = 0;
 int Freq = 1800;
+const int Battery_GPIO = A0;
 int Flag = 0;
 ESP8266WebServer server(8000);
 void handleRoot();
+const float Batter_percentage[12][2] = {
+  {0, 0},
+  {696, 0},
+  {725, 10},
+  {755, 20},
+  {785, 30},
+  {805, 40},
+  {820, 50},
+  {835, 60},
+  {855, 70},
+  {885, 80},
+  {915, 90},
+  {950,  100}
+};
+int perc = 0;
 
 OneWire oneWire(GPIO);
 DallasTemperature Thermometer(&oneWire);
+
 
 int WiFiConnection(){
     
@@ -48,19 +65,16 @@ int WiFiConnection(){
             }
             loop_connect ++;
         }
-     
         if (WiFi.status() != WL_CONNECTED){
             return 0;
         }
         else{
             return 1;
         }
-     
     }
     else{
         return 1;
     }
-  
 }
 
 
@@ -80,7 +94,6 @@ void postData(String Sensor_data){
     
     Http.end();
     postData_Buffer.clear();
-      
 }
 
 int SendIP(){
@@ -99,14 +112,29 @@ int SendIP(){
 
     Http.end();
     IP_Buffer.clear();
+}
 
-    return httpResponseCode;
-      
+
+int SendBattery_level(int Battery_level){
+
+    HTTPClient Http;
+    StaticJsonBuffer<100> Battery_Buffer;
+    JsonObject& rootBattery = Battery_Buffer.createObject();
+    
+    rootBattery["name"] = Name;
+    rootBattery["battery_level"] = Battery_level;
+    String Data;
+    rootBattery.printTo(Data);
+    Http.begin("http://" + ServerName + "/sensors/battery");
+    Http.addHeader("Content-Type", "application/json");
+    int httpResponseCode = Http.POST(Data);
+
+    Http.end();
+    Battery_Buffer.clear();
 }
 
 
 void setup() {
-    Serial.begin(115200);
     SPIFFS.begin();
     Thermometer.begin();
     File file = SPIFFS.open("/data.txt", "r");
@@ -114,7 +142,7 @@ void setup() {
     int loop_connect = 0;
     while(WiFiConnection() < 1  && loop_connect < 6){
         if(loop_connect > 5){
-            delay(Freq * 1000);
+            delay(1000);
             loop_connect = 0;
         }
         
@@ -152,7 +180,6 @@ void setup() {
     server.on("/receive", handleReceive);
     server.onNotFound(handleNotFound);
     server.begin();
-  
 }
 
 void handleNotFound() { 
@@ -175,6 +202,15 @@ void loop() {
     
     if (WiFiConnection() > 0) {
         if(Flag == 0) {
+            float Battery_level = analogRead(Battery_GPIO);
+            for(int i = 0; i <= 11; i++) {
+              if(Batter_percentage[11 - i][0] <= Battery_level) {
+                perc = Batter_percentage[11 - i][1];
+                break;
+              }
+            }
+            SendBattery_level(perc);
+            
             Thermometer.requestTemperatures(); 
             float TemperatureC = Thermometer.getTempCByIndex(0);
             String dataSend = String(TemperatureC, 2);

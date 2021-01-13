@@ -1,12 +1,18 @@
 /***** Variables to customize *****/
 // Name of your network
-const char* ssid = "MASZT_2.4G";
+const char* ssid = "";
 // Password of your network
-const char* password = "Kopytko1954!";
+const char* password = "";
 // Raspberry server address here
-const String ServerName = "192.168.0.100:8001";
+const String ServerName = "";
 // Name of your sensor
-String Name = "wilgotnosc2";
+String Name = "";
+// Your GPIO pin connected to pin A of CD4052
+const int ADC_divider_1 = ;
+// Your GPIO pin connected to pin B of CD4052
+const int ADC_divider_2 = ;
+// Your GPIO pin connected to pin C of CD4052
+const int ADC_divider_3 = ;
 
 
 #include <ESP8266WiFi.h>
@@ -24,6 +30,22 @@ const int GPIO = A0;
 int Freq = 1800;
 int Flag = 0;
 ESP8266WebServer server(8000);
+const float Batter_percentage[12][2] = {
+  {0, 0},
+  {696, 0},
+  {725, 10},
+  {755, 20},
+  {785, 30},
+  {805, 40},
+  {820, 50},
+  {835, 60},
+  {855, 70},
+  {885, 80},
+  {915, 90},
+  {950,  100}
+};
+int perc = 0;
+
 
 int WiFiConnection(){
     
@@ -41,19 +63,16 @@ int WiFiConnection(){
             }
             loop_connect ++;
         }
-     
         if (WiFi.status() != WL_CONNECTED){
           return 0;
         }
         else{
             return 1;
         }
-  
     }
     else{
         return 1;
     }
- 
 }
 
 
@@ -73,7 +92,6 @@ void postData(String Sensor_data){
         
     Http.end();
     postData_Buffer.clear();
-      
 }
 
 int SendIP(){
@@ -92,21 +110,51 @@ int SendIP(){
       
     Http.end();
     IP_Buffer.clear();
-
-    return httpResponseCode;
-      
 }
 
-void setup()
-{
-    Serial.begin(115200);
+
+int SendBattery_level(int Battery_level){
+
+    HTTPClient Http;
+    StaticJsonBuffer<100> Battery_Buffer;
+    JsonObject& rootBattery = Battery_Buffer.createObject();
+      
+    rootBattery["name"] = Name;
+    rootBattery["battery_level"] = Battery_level;
+    String Data;
+    rootBattery.printTo(Data);
+    Http.begin("http://" + ServerName + "/sensors/battery");
+    Http.addHeader("Content-Type", "application/json");
+    int httpResponseCode = Http.POST(Data);
+
+    Http.end();
+    Battery_Buffer.clear();
+}
+
+
+void Change_output(int a, int b, int c){
+  digitalWrite(ADC_divider_1, a);
+  digitalWrite(ADC_divider_2, b);
+  digitalWrite(ADC_divider_3, c);
+}
+
+
+void setup() {
     SPIFFS.begin();
     File file = SPIFFS.open("/data.txt", "r");
+
+    pinMode(ADC_divider_1, OUTPUT);
+    pinMode(ADC_divider_2, OUTPUT);     
+    pinMode(ADC_divider_3, OUTPUT);  
+
+    digitalWrite(ADC_divider_1, 0);
+    digitalWrite(ADC_divider_2, 0);
+    digitalWrite(ADC_divider_3, 0);
     
     int loop_connect = 0;
     while(WiFiConnection() < 1  && loop_connect < 6){
         if(loop_connect > 5){
-            delay(Freq * 1000);
+            delay(1000);
             loop_connect = 0;
         }
         
@@ -167,6 +215,19 @@ void loop()
   
     if (WiFiConnection() > 0){
         if(Flag == 0) {
+          
+            Change_output(1, 0, 0);
+            float Battery_level = analogRead(GPIO);
+            Battery_level = Battery_level * 0.00385;
+            for(int i = 0; i <= 11; i++) {
+              if(Batter_percentage[11 - i][0] <= Battery_level) {
+                perc = Batter_percentage[11 - i][1];
+                break;
+              }
+            }
+            SendBattery_level(perc);
+            
+            Change_output(0, 0, 0);
             int Moisture = analogRead(GPIO);
             Moisture = map(Moisture, 279, 560, 100, 0);
             String dataSend = String(Moisture);
