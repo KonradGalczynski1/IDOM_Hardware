@@ -7,12 +7,7 @@ const char* password = "";
 String ServerName = "";
 // Name of your sensor
 String Name = "";
-// Your GPIO pin connected to pin A of CD4052
-const int ADC_divider_1 = ;
-// Your GPIO pin connected to pin B of CD4052
-const int ADC_divider_2 = ;
-// Your GPIO pin connected to pin C of CD4052
-const int ADC_divider_3 = ;
+
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -20,6 +15,7 @@ const int ADC_divider_3 = ;
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <FS.h>
+
 
 unsigned long Actual_time = 0;
 unsigned long Last_time = 0;
@@ -67,6 +63,7 @@ void postData(){
     JsonObject& root = postData_Buffer.createObject();
     
     root["sensor"] = Name;
+    root["sensor_data"] = "1";
     String Data;
     root.printTo(Data);
     Http.begin("http://" + ServerName + "/sensors_data/add");
@@ -111,14 +108,6 @@ void handleReceive() {
 void setup() {
     SPIFFS.begin();
     File file = SPIFFS.open("/data.txt", "r");
-
-    pinMode(ADC_divider_1, OUTPUT);
-    pinMode(ADC_divider_2, OUTPUT);     
-    pinMode(ADC_divider_3, OUTPUT);  
-
-    digitalWrite(ADC_divider_1, 0);
-    digitalWrite(ADC_divider_2, 0);
-    digitalWrite(ADC_divider_3, 0);
 
     int loop_connect = 0;
     while(WiFiConnection() < 1  && loop_connect < 6){

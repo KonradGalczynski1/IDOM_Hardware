@@ -7,11 +7,8 @@ const char* password = "";
 const String ServerName = "";
 // Name of your pilot
 String Name = "";
-// Your GPIO pin number
-const int GPIO = ;
 
 
-#include <Arduino.h>
 #include <IRremoteESP8266.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -22,7 +19,7 @@ const int GPIO = ;
 #include <FS.h>
 
 
-IRsend irsend(GPIO);
+IRsend irsend(14);
 ESP8266WebServer server(8000);
 void handleRoot() {}
 

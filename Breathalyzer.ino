@@ -8,11 +8,11 @@ String ServerName = "";
 // Name of your sensor
 String Name = "";
 // Your GPIO pin number connected to green led
-const int Green = ;
+const int Green = 4;
 // Your GPIO pin number connected to red led
-const int Red = ;
+const int Red = 5;
 // Your GPIO pin number connected to button
-const int Button = ;
+const int Button = 13;
 
 
 #include <FS.h>
@@ -156,13 +156,13 @@ void loop() {
   server.handleClient();
   
   if (WiFiConnection() > 0) {
-    if (digitalRead(Button) == LOW && Flag == 1) {
+    if (digitalRead(Button) == LOW) {
       Flag = 0;
       digitalWrite(Green, HIGH);
     }
     float Sum = 0;
     int Check_sum = 0;
-    if (digitalRead(Button) == LOW && Flag == 0) {
+    if (digitalRead(Button) == HIGH && Flag == 0) {
       Flag = 1;
       Actual_time = millis();
       Count_4_seconds = millis();
@@ -184,7 +184,7 @@ void loop() {
   else {
     WiFiConnection();
   }
-  delay(2000);
-  digitalWrite(13, LOW);
-  digitalWrite(15, LOW);
+  digitalWrite(Green, LOW);
+  delay(5000);
+  digitalWrite(Red, LOW);
 }

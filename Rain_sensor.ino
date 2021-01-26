@@ -88,8 +88,7 @@ int SendIP(){
     IP_Buffer.clear();
 }
 
-void setup()
-{
+void setup(){
   SPIFFS.begin();
   File file = SPIFFS.open("/data.txt", "r");
     
@@ -144,7 +143,7 @@ void loop()
     if(Actual_time - Last_time >= 30000UL) {
       Last_time = Actual_time;
       int Moisture = analogRead(GPIO);
-      Moisture = map(Moisture, 0, 1023, 0, 100);
+      Moisture = map(Moisture, 570, 903, 100, 0);
       String dataSend = String(Moisture);
       postData(dataSend);
     }

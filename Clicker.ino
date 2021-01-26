@@ -8,7 +8,8 @@ String ServerName = "";
 // Name of your sensor
 String Name = "";
 // Your GPIO pin number
-const int GPIO = ;
+const int GPIO = 4;
+
 
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -17,6 +18,7 @@ const int GPIO = ;
 #include <Servo.h>
 #include <ArduinoJson.h>
 #include <FS.h>
+
 
 Servo servo;
 int Action = 0;

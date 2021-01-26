@@ -8,11 +8,11 @@ const String ServerName = "";
 // Name of your sensor
 String Name = "";
 // Your GPIO pin connected to pin A of CD4052
-const int ADC_divider_1 = ;
+const int ADC_divider_1 = 14;
 // Your GPIO pin connected to pin B of CD4052
-const int ADC_divider_2 = ;
+const int ADC_divider_2 = 12;
 // Your GPIO pin connected to pin C of CD4052
-const int ADC_divider_3 = ;
+const int ADC_divider_3 = 13;
 
 
 #include <ESP8266WiFi.h>
@@ -30,19 +30,29 @@ const int GPIO = A0;
 int Freq = 1800;
 int Flag = 0;
 ESP8266WebServer server(8000);
-const float Batter_percentage[12][2] = {
+const float Batter_percentage[22][2] = {
   {0, 0},
-  {696, 0},
-  {725, 10},
-  {755, 20},
-  {785, 30},
-  {805, 40},
-  {820, 50},
-  {835, 60},
-  {855, 70},
-  {885, 80},
-  {915, 90},
-  {950,  100}
+  {605, 0},
+  {625, 5},
+  {640, 10},
+  {650, 15},
+  {660, 20},
+  {670, 25},
+  {680, 30},
+  {690, 35},
+  {700, 40},
+  {710, 45},
+  {715, 50},
+  {720, 55},
+  {730, 60},
+  {740, 65},
+  {750, 70},
+  {760, 75},
+  {770, 80},
+  {780, 85},
+  {790, 90},
+  {810, 95},
+  {830, 100}
 };
 int perc = 0;
 
@@ -218,10 +228,9 @@ void loop()
           
             Change_output(1, 0, 0);
             float Battery_level = analogRead(GPIO);
-            Battery_level = Battery_level * 0.00385;
-            for(int i = 0; i <= 11; i++) {
-              if(Batter_percentage[11 - i][0] <= Battery_level) {
-                perc = Batter_percentage[11 - i][1];
+            for(int i = 0; i <= 21; i++) {
+              if(Batter_percentage[21 - i][0] <= Battery_level) {
+                perc = Batter_percentage[21 - i][1];
                 break;
               }
             }
@@ -229,7 +238,7 @@ void loop()
             
             Change_output(0, 0, 0);
             int Moisture = analogRead(GPIO);
-            Moisture = map(Moisture, 279, 560, 100, 0);
+            Moisture = map(Moisture, 570, 903, 100, 0);
             String dataSend = String(Moisture);
             postData(dataSend);
             Flag = 1;
@@ -242,5 +251,9 @@ void loop()
     }
     else {
         WiFiConnection();
+        Actual_time = millis();
+        if(Actual_time - Last_time >= 10000UL) {
+            ESP.deepSleep(Freq * 1000000);
+        }
     }
 }

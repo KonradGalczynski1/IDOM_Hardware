@@ -1,22 +1,22 @@
 /***** Variables to customize *****/
 // Your GPIO pin number connected to trig pin
-const int Trig = ;
+const int Trig = 1;
 // Your GPIO pin number connected to echo pin
-const int Echo = ;
+const int Echo = 3;
 // Your GPIO pin number connected to first green led
-const int Green_1 = ;
+const int Green_1 = 5;
 // Your GPIO pin number connected to second green led
-const int Green_2 = ;
+const int Green_2 = 4;
 // Your GPIO pin number connected to first yellow led
-const int Yellow_1 = ;
+const int Yellow_1 = 0;
 // Your GPIO pin number connected to second yellow led
-const int Yellow_2 = ;
+const int Yellow_2 = 15;
 // Your GPIO pin number connected to first red led
-const int Red_1 = ;
+const int Red_1 = 13;
 // Your GPIO pin number connected to second red led
-const int Red_2 = ;
+const int Red_2 = 12;
 // Your GPIO pin number connected to buzzer
-const int Buzzer = ;
+const int Buzzer = 14;
 /**********************************/
 
 
@@ -40,7 +40,6 @@ int Measure_the_distance(){
 
 
 void setup() {
-  Serial.begin (115200);
   pinMode(Trig, OUTPUT);
   pinMode(Echo, INPUT);
   

@@ -8,7 +8,7 @@ String ServerName = "";
 // Name of your sensor
 String Name = "";
 // Your GPIO pin number
-const int GPIO = ;
+const int GPIO = 4;
 // Time in seconds needed for closing/opening curtains
 const float Time = ;
 
@@ -24,6 +24,7 @@ const float Time = ;
 
 Servo servo;
 int Rotation = 0;
+int data_receive = 0;
 ESP8266WebServer server(8000);
 void handleRoot();
 
@@ -80,20 +81,24 @@ void handleNotFound() {
 void handleReceive() { 
     String Name_received = "";
     Name_received = String(server.arg("name"));
-    Rotation = (server.arg("data").toInt());
+    data_receive = (server.arg("data").toInt());
     server.send(200);
 
-    if(Rotation == 1){
-      servo.attach(GPIO);
-      servo.write(110);
-      delay(Time * 1000);
-      servo.detach();
-    }
-    if(Rotation == 0){
-      servo.attach(GPIO);
-      servo.write(40);
-      delay(Time * 1000);
-      servo.detach();
+    if(data_receive == 1){
+      if(Rotation == 1){
+        servo.attach(GPIO);
+        servo.write(110);
+        delay(Time * 1000);
+        servo.detach();
+        Rotation = 0;
+      }
+      else{
+        servo.attach(GPIO);
+        servo.write(40);
+        delay(Time * 1000);
+        servo.detach();
+        Rotation = 1;
+      }
     }
     
     if (Name_received != Name){

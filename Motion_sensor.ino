@@ -8,7 +8,7 @@ const String ServerName = "";
 // Name of your sensor
 String Name = "";
 // Your GPIO pin number
-const int GPIO = ;
+const int GPIO = 4;
 
 
 #include <ESP8266WiFi.h>
@@ -63,6 +63,7 @@ void postData(){
     JsonObject& root = postData_Buffer.createObject();
     
     root["sensor"] = Name;
+    root["sensor_data"] = "1";
     String Data;
     root.printTo(Data);
     Http.begin("http://" + ServerName + "/sensors_data/add");
